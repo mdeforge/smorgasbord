@@ -1,0 +1,3 @@
+[submodule "nyms-recipes"]
+	path = nyms-recipes
+	url = https://github.com/mdeforge/nyms-recipes

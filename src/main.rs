@@ -7,6 +7,35 @@ use inquire::*;
 
 mod recipe;
 
+// #[derive(Debug)]
+// pub enum RecipeError {
+//     ReadError(std::io::Error),
+//     ParseError(serde_json::Error)
+// }
+
+// impl fmt::Display for RecipeError {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             RecipeError::ReadError(err) => write!(f, "ReadError: {}", err),
+//             RecipeError::ParseError(err) => write!(f, "ParseError: {}", err)
+//         }
+//     }
+// }
+
+// impl Error for RecipeError {}
+
+// impl From<std::io::Error> for RecipeError {
+//     fn from(error: std::io::Error) -> Self {
+//         RecipeError::ReadError(error)
+//     }
+// }
+
+// impl From<serde_json::Error> for RecipeError {
+//     fn from(error: serde_json::Error) -> Self {
+//         RecipeError::ParseError(error)
+//     }
+// }
+
 #[allow(dead_code)]
 fn lbs_to_ounces(lbs: f32) -> f32 {
     lbs * 16.0
@@ -59,8 +88,35 @@ fn read_recipes(folder: &str) -> Result<Vec<Recipe>, Box<dyn Error>> {
     Ok(recipes)
 }
 
+mod MAIN_MENU {
+    pub const PLAN_WEEK: &str = "Plan week";
+    pub const PLAN_DAY: &str = "Plan day";
+}
+
 fn main() -> std::io::Result<()> {
-    let options: Vec<_> = vec!["Generate Weekly Meal Plan", "Generate Daily Meal Plan"];
+    // TODO(mdeforge): Get rid of this unwrap
+    let read_result = read_recipes("nyms-recipes/recipes").unwrap();
+
+    mod MainMenu {
+        pub enum Options {
+            WEEKLY,
+            DAILY
+        }
+
+        impl Options {
+            fn as_str(&self) -> &'static str {
+                match self {
+                    Options::WEEKLY => "Plan meals for a week",
+                    Options::DAILY => "Plan meals for a day"
+                }
+            }
+        }
+
+        static OPTIONS: Vec<Options> = vec!{ self::Options::WEEKLY, self::Options::DAILY };
+    }
+
+
+    //let options: Vec<_> = MainMenuOptions::into();
     let ans: Result<&str, InquireError> = Select::new("What would you like to do?", options).prompt();
 
     match ans {

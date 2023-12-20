@@ -1,13 +1,16 @@
-use inquire::Select;
+use inquire::{Select, Text};
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use crate::data::data::USER_DATA;
+use crate::person::Person;
 use crate::recipe::Recipe;
+use crate::user::User;
 //use crate::util::Util;
 
 // TODO(mdeforge): Need to add support for tracking two people's smart point values
-
+// TODO(mdeforge): Replace unwrap's after prompt with error handling
 
 pub trait Menu {
     fn prompt(&self) -> Option<Box<dyn Menu>>;
@@ -15,6 +18,15 @@ pub trait Menu {
 
 #[derive(Default)]
 pub struct MainMenu;
+
+#[derive(Default)]
+struct SetupMenu;
+
+#[derive(Default)]
+struct AddPersonMenu;
+
+#[derive(Default)]
+struct RemovePersonMenu;
 
 #[derive(Default)]
 struct WeeklyMenu;
@@ -85,6 +97,53 @@ impl Menu for MainMenu {
             "Create weekly meal plan" => Some(Box::new(WeeklyMenu::default())),
             "Create daily meal plan" => Some(Box::new(DailyMenu::default())),
             "Exit" => None,
+            _ => None
+        }
+    }
+}
+
+impl Menu for SetupMenu {
+    fn prompt(&self) -> Option<Box<dyn Menu>> {
+        let options = vec!["Add person", "Remove person"];
+        let ans = Select::new("Choose", options).prompt().unwrap();
+        match ans {
+            "Add person" => Some(Box::new(WeeklyMenu::default())),
+            "Remove person" => Some(Box::new(DailyMenu::default())),
+            "Main Menu" => Some(Box::new(MainMenu::default())),
+            _ => None
+        }
+    }
+}
+
+impl Menu for AddPersonMenu {
+    fn prompt(&self) -> Option<Box<dyn Menu>> {
+        let name = Text::new("Please enter a name:").prompt().unwrap();
+
+        // Check if empty
+        if name.is_empty() {
+            println!("Name cannot be empty");
+            return Some(Box::new(AddPersonMenu::default()));
+        }
+
+        // Check if it exists
+        if USER_DATA.has_person(&name) {
+            println!("Person {} already exists, please use another name", name);
+            return Some(Box::new(AddPersonMenu::default()));
+        }
+
+        USER_DATA.add_person(name, Person::default());
+        Some(Box::new(SetupMenu::default()))
+    }
+}
+
+impl Menu for RemovePersonMenu {
+    fn prompt(&self) -> Option<Box<dyn Menu>> {
+        let options = vec!["Add person", "Remove person"];
+        let ans = Select::new("Choose", options).prompt().unwrap();
+        match ans {
+            "Add person" => Some(Box::new(WeeklyMenu::default())),
+            "Remove person" => Some(Box::new(DailyMenu::default())),
+            "Main Menu" => Some(Box::new(MainMenu::default())),
             _ => None
         }
     }

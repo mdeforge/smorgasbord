@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use core::fmt;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -7,14 +7,14 @@ use std::path::Path;
 #[derive(Debug)]
 pub enum RecipeError {
     ReadError(std::io::Error),
-    ParseError(serde_json::Error)
+    ParseError(serde_json::Error),
 }
 
 impl fmt::Display for RecipeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RecipeError::ReadError(err) => write!(f, "ReadError: {}", err),
-            RecipeError::ParseError(err) => write!(f, "ParseError: {}", err)
+            RecipeError::ParseError(err) => write!(f, "ParseError: {}", err),
         }
     }
 }
@@ -130,18 +130,18 @@ impl Recipe {
 //     use super::*;
 //     use rstest::rstest;
 
-    // #[rstest]
-    // #[case("nyms-recipes/recipes/fathead-pizza.json")]
-    // fn test_recipe_read<P: AsRef<Path>>(#[case] file: P) {
-    //     assert!(Recipe::new(file).is_ok());
-    // }
+// #[rstest]
+// #[case("nyms-recipes/recipes/fathead-pizza.json")]
+// fn test_recipe_read<P: AsRef<Path>>(#[case] file: P) {
+//     assert!(Recipe::new(file).is_ok());
+// }
 
-    // #[rstest]
-    // #[case("nyms-recipes/recipes/fathead-pizza.json")]
-    // fn test_recipe_parse<P: AsRef<Path>>(#[case] file: P) {
-    //     match Recipe::new(file) {
-    //         Ok(recipe) => println!("{}", recipe.name),
-    //         Err(err) => println!("Error: {}", err),
-    //     };
-    // }
+// #[rstest]
+// #[case("nyms-recipes/recipes/fathead-pizza.json")]
+// fn test_recipe_parse<P: AsRef<Path>>(#[case] file: P) {
+//     match Recipe::new(file) {
+//         Ok(recipe) => println!("{}", recipe.name),
+//         Err(err) => println!("Error: {}", err),
+//     };
+// }
 //}

@@ -3,7 +3,6 @@ use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use crate::data::data::USER_DATA;
 use crate::person::Person;
 use crate::recipe::Recipe;
 use crate::user::User;
@@ -11,9 +10,11 @@ use crate::user::User;
 
 // TODO(mdeforge): Need to add support for tracking two people's smart point values
 // TODO(mdeforge): Replace unwrap's after prompt with error handling
+// TODO(mdeforge): We can move the actual inquire prompt out of the prompt() function (or to it's own function)
+//                 so that we can better unit test what some of the menus should be doing.
 
 pub trait Menu {
-    fn prompt(&self) -> Option<Box<dyn Menu>>;
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>>;
 }
 
 #[derive(Default)]
@@ -90,12 +91,13 @@ fn read_recipes(folder: &str) -> Result<Vec<Recipe>, Box<dyn Error>> {
 }
 
 impl Menu for MainMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
-        let options = vec!["Create weekly meal plan", "Create daily meal plan", "Exit"];
-        let ans = Select::new("Choose", options).prompt().unwrap();
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+        let options = vec!["Create weekly meal plan", "Create daily meal plan", "User Setup", "Exit"];
+        let ans = Select::new("What would you like to do?", options).prompt().unwrap();
         match ans {
             "Create weekly meal plan" => Some(Box::new(WeeklyMenu::default())),
             "Create daily meal plan" => Some(Box::new(DailyMenu::default())),
+            "User Setup" => Some(Box::new(SetupMenu::default())),
             "Exit" => None,
             _ => None
         }
@@ -103,54 +105,66 @@ impl Menu for MainMenu {
 }
 
 impl Menu for SetupMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
-        let options = vec!["Add person", "Remove person"];
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+        let options = vec!["Add person", "Remove person", "Back"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {
-            "Add person" => Some(Box::new(WeeklyMenu::default())),
-            "Remove person" => Some(Box::new(DailyMenu::default())),
-            "Main Menu" => Some(Box::new(MainMenu::default())),
+            "Add person" => Some(Box::new(AddPersonMenu::default())),
+            "Remove person" => Some(Box::new(RemovePersonMenu::default())),
+            "Back" => Some(Box::new(MainMenu::default())),
             _ => None
         }
     }
 }
 
 impl Menu for AddPersonMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
+    // TODO(mdeforge): How to cancel?
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let name = Text::new("Please enter a name:").prompt().unwrap();
 
         // Check if empty
         if name.is_empty() {
-            println!("Name cannot be empty");
+            println!("Name cannot be empty, please enter a valid name.");
             return Some(Box::new(AddPersonMenu::default()));
         }
 
         // Check if it exists
-        if USER_DATA.has_person(&name) {
-            println!("Person {} already exists, please use another name", name);
+        if user.has_person(&name) {
+            println!("Person {} already exists, please use another name.", name);
             return Some(Box::new(AddPersonMenu::default()));
         }
 
-        USER_DATA.add_person(name, Person::default());
+        // TODO(mdeforge): How many smart points?
+
+        user.add_person(&name, Person::default());
+        println!("{} has been added to the account.", name);
         Some(Box::new(SetupMenu::default()))
     }
 }
 
 impl Menu for RemovePersonMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
-        let options = vec!["Add person", "Remove person"];
-        let ans = Select::new("Choose", options).prompt().unwrap();
-        match ans {
-            "Add person" => Some(Box::new(WeeklyMenu::default())),
-            "Remove person" => Some(Box::new(DailyMenu::default())),
-            "Main Menu" => Some(Box::new(MainMenu::default())),
-            _ => None
+    // TODO(mdeforge): How to cancel?
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+        let mut options = user.get_people();
+        options.push(String::from("Cancel"));
+
+        let ans = Select::new("Select person to remove:", options).prompt().unwrap();
+        let name = ans.as_str();
+        match name {
+            "Cancel" => return Some(Box::new(SetupMenu::default())),
+            _ => {
+                if user.remove_person(&ans).is_some() {
+                    println!("{} successfully removed from the account.", name);
+                }
+
+                return Some(Box::new(SetupMenu::default()))
+            }
         }
     }
 }
 
 impl Menu for WeeklyMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let options = vec!["Use Smart Points", "Just Randomize", "Main Menu"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {
@@ -169,7 +183,7 @@ impl Menu for WeeklyMenu {
 }
 
 impl Menu for DailyMenu {
-    fn prompt(&self) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let options = vec!["Use Smart Points", "Just Randomize", "Main Menu"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {

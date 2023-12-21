@@ -64,8 +64,8 @@ impl User {
         Ok(())
     }
 
-    pub fn add_person(&mut self, name: String, person: Person) {
-        self.people.insert(name, person);
+    pub fn add_person(&mut self, name: &String, person: Person) {
+        self.people.insert(name.clone(), person);
     }
 
     pub fn remove_person(&mut self, name: &String) -> Option<Person> {
@@ -78,6 +78,10 @@ impl User {
 
     pub fn has_person(&self, name: &String) -> bool {
         self.people.contains_key(name)
+    }
+
+    pub fn get_people(&self) -> Vec<String> {
+        self.people.keys().cloned().collect()
     }
 }
 

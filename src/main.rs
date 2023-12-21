@@ -1,19 +1,21 @@
 
 use menus::*;
+use user::User;
 
 mod menus;
 mod recipe;
 mod person;
 mod user;
-mod data;
 
 fn main() -> std::io::Result<()> {
     // TODO(mdeforge): Get rid of this unwrap
     //let read_result = read_recipes("nyms-recipes/recipes").unwrap();
+    let mut user = User::default();
+
 
     let mut _current_menu: Option<Box<dyn Menu>> = Some(Box::new(MainMenu::default()));
     while _current_menu.is_some() {
-        _current_menu = _current_menu.unwrap().prompt();
+        _current_menu = _current_menu.unwrap().prompt(&mut user);
     }
 
     Ok(())

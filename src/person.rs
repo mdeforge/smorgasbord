@@ -1,6 +1,5 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
-use serde_json::to_writer;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -46,7 +45,7 @@ impl From<serde_json::Error> for PersonError {
 pub struct Person {
     pub name: String,
     pub daily_smart_point_limit: i32,
-    pub extra_points: i32
+    pub extra_points: i32,
 }
 
 impl Person {
@@ -72,8 +71,8 @@ impl Person {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
     use assert_fs::*;
+    use rstest::rstest;
 
     #[rstest]
     #[case("person.json")]

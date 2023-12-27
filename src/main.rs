@@ -1,17 +1,25 @@
-
-use menus::*;
 use user::User;
 
-mod menus;
-mod recipe;
 mod person;
+mod recipe;
+mod recipes;
 mod user;
+mod menus;
+
+use menus::menu::*;
+use menus::main_menu::MainMenu;
+
+// TODO(mdeforge): Need to add support for tracking two people's smart point values
+// TODO(mdeforge): Replace unwrap's after prompt with error handling
+// TODO(mdeforge): We can move the actual inquire prompt out of the prompt() function (or to it's own function)
+//                 so that we can better unit test what some of the menus should be doing.
+
+
 
 fn main() -> std::io::Result<()> {
     // TODO(mdeforge): Get rid of this unwrap
     //let read_result = read_recipes("nyms-recipes/recipes").unwrap();
     let mut user = User::default();
-
 
     let mut _current_menu: Option<Box<dyn Menu>> = Some(Box::new(MainMenu::default()));
     while _current_menu.is_some() {

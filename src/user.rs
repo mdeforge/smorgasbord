@@ -1,11 +1,12 @@
+use crate::person::Person;
+use crate::recipes::Recipes;
 use core::fmt;
 use serde::{Deserialize, Serialize};
-use serde_json::to_writer;
+use std::io;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::collections::HashMap;
-use crate::person::Person;
 
 #[derive(Debug)]
 pub enum UserError {
@@ -46,7 +47,8 @@ impl From<serde_json::Error> for UserError {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct User {
-    people: HashMap<String, Person>
+    people: HashMap<String, Person>,
+    recipes: Recipes
 }
 
 impl User {
@@ -83,13 +85,18 @@ impl User {
     pub fn get_people(&self) -> Vec<String> {
         self.people.keys().cloned().collect()
     }
+
+    pub fn read_recipes<P: AsRef<Path>>(&mut self, folder: P) -> Result<(), io::Error> {
+        self.recipes.read_recipes(folder)
+    }
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
     use assert_fs::*;
+    use rstest::rstest;
 
     #[rstest]
     #[case("user.json")]

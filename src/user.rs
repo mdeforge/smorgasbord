@@ -1,48 +1,27 @@
 use crate::person::Person;
 use crate::recipes::Recipes;
-use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::io;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Debug)]
-pub enum UserError {
-    ReadError(std::io::Error),
-    WriteError(std::io::Error),
-    ParseError(serde_json::Error),
+#[derive(Error, Debug)]
+pub enum UserLoadError {
+    #[error("Failed to read file: {0}")]
+    ReadFileError(#[from] std::io::Error),
+    #[error("Failed to parse JSON: {0}")]
+    JSONDeserializeError(#[from] serde_json::Error)
 }
 
-impl fmt::Display for UserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            UserError::ReadError(err) => write!(f, "ReadError: {}", err),
-            UserError::WriteError(err) => write!(f, "WriteError: {}", err),
-            UserError::ParseError(err) => write!(f, "ParseError: {}", err),
-        }
-    }
-}
-
-impl Error for UserError {}
-
-impl From<std::io::Error> for UserError {
-    fn from(error: std::io::Error) -> Self {
-        UserError::ReadError(error)
-    }
-}
-
-// impl From<std::io::Error> for UserError {
-//     fn from(error: std::io::Error) -> Self {
-//         UserError::WriteError(error)
-//     }
-// }
-
-impl From<serde_json::Error> for UserError {
-    fn from(error: serde_json::Error) -> Self {
-        UserError::ParseError(error)
-    }
+#[derive(Error, Debug)]
+pub enum UserSaveError {
+    #[error("Failed to open file: {0}")]
+    OpenFileError(#[from] std::io::Error),
+    #[error("Failed to write JSON: {0}")]
+    JSONSerializeError(#[from] serde_json::Error)
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -52,14 +31,14 @@ pub struct User {
 }
 
 impl User {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<User, UserError> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<User, UserLoadError> {
         let file_data: String = fs::read_to_string(&path)?;
         let user = serde_json::from_str(&file_data)?;
 
         Ok(user)
     }
 
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), UserSaveError> {
         let file = fs::File::create(path)?;
         serde_json::to_writer(file, &self)?;
 
@@ -98,6 +77,35 @@ mod tests {
     use assert_fs::*;
     use rstest::rstest;
 
+    fn create_dummy_user() -> User {
+        // Create person
+        let mut person = Person::new("Michael", 50, 10);
+
+        // Create user and add person
+        let mut user = User::default();
+        user.add_person(&person.name, person);
+
+        user
+    }
+
+    #[rstest] // (file, expected)
+    #[case("user.json", true)] // tests valid file, valid json
+    #[case("", false)]         // tests invalid file, valid json
+    // NOTE(mdeforge): This test assumes the JSON will never be invalid because it is being serialized from structs
+    fn test_user_save<P: AsRef<Path>>(#[case] file: P, #[case] expected: bool) {
+        // Create directory
+        let temp_dir = TempDir::new().unwrap();
+        let filename = temp_dir.join(file);
+
+        // Create user
+        let user = create_dummy_user();
+        match user.save(&filename) {
+            Err(UserSaveError::OpenFileError(_)) => assert!(true),
+            Err(UserSaveError::JSONSerializeError(_)) => assert!(true),
+            _ => assert!(expected, "Expected an UserSaveError")
+        }
+    }
+
     #[rstest]
     #[case("user.json")]
     fn test_user_save_and_load<P: AsRef<Path>>(#[case] file: P) {
@@ -105,15 +113,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let filename = temp_dir.join(file);
 
-        // Create person
-        let mut person = Person::default();
-        person.set_daily_smart_point_limit(50);
-
-        // Create user and add person
-        let mut save_user = User::default();
-        save_user.add_person(String::from("Michael"), person);
-
         // Save user
+        let save_user = create_dummy_user();
         let save_result = save_user.save(&filename);
         assert!(save_result.is_ok());
 
@@ -124,6 +125,6 @@ mod tests {
         // Get person
         let load_result = result.unwrap();
         let load_person = load_result.find_person(&String::from("Michael")).unwrap();
-        assert_eq!(load_person.daily_smart_point_limit, 50);
+        assert_eq!(load_person.daily_points, 50);
     }
 }

@@ -7,8 +7,6 @@ use inquire::Select;
 #[derive(Default)]
 pub struct DailyMenu;
 
-
-
 impl Menu for DailyMenu {
     fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let options = vec!["Use Smart Points", "Just Randomize", "Main Menu"];

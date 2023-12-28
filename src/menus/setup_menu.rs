@@ -43,16 +43,20 @@ impl Menu for AddPersonMenu {
             return Some(Box::new(AddPersonMenu::default()));
         }
 
-        // TODO(mdeforge): How many smart points?
+        // let point_text = format!("How many points does {} have each day?", name);
+        // let points = Text::new(&point_text).prompt().unwrap();
+        // if points.parse() {
+        //     Ok(points) => user.add_person(&name, Person::default());
+        // }
 
-        user.add_person(&name, Person::default());
+        
         println!("{} has been added to the account.", name);
+
         Some(Box::new(SetupMenu::default()))
     }
 }
 
 impl Menu for RemovePersonMenu {
-    // TODO(mdeforge): How to cancel?
     fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let mut options = user.get_people();
         options.push(String::from("Cancel"));

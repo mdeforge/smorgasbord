@@ -44,11 +44,18 @@ impl From<serde_json::Error> for PersonError {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Person {
     pub name: String,
-    pub daily_smart_point_limit: i32,
+    pub daily_points: i32,
     pub extra_points: i32,
 }
 
 impl Person {
+    pub fn new<S: AsRef<str>>(name: S, daily_points: i32, extra_points: i32) -> Self {
+        Self {
+            name: name.as_ref().to_string(),
+            daily_points:daily_points,
+            extra_points: extra_points
+        }
+    }
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Person, PersonError> {
         let file_data: String = fs::read_to_string(&path)?;
         let person = serde_json::from_str(&file_data)?;
@@ -64,7 +71,7 @@ impl Person {
     }
 
     pub fn set_daily_smart_point_limit(&mut self, limit: i32) {
-        self.daily_smart_point_limit = limit;
+        self.daily_points = limit;
     }
 }
 
@@ -90,6 +97,6 @@ mod tests {
         assert!(result.is_ok());
 
         let load_person = result.unwrap();
-        assert_eq!(load_person.daily_smart_point_limit, 50);
+        assert_eq!(load_person.daily_points, 50);
     }
 }

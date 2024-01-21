@@ -3,7 +3,6 @@ use crate::recipes::Recipes;
 use serde::{Deserialize, Serialize};
 use std::io;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 use thiserror::Error;
@@ -26,6 +25,7 @@ pub enum UserSaveError {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct User {
+    pub name: String,
     people: HashMap<String, Person>,
     recipes: Recipes
 }
@@ -39,18 +39,26 @@ impl User {
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), UserSaveError> {
+        let dir_path = path.as_ref().parent().unwrap();
+        fs::create_dir_all(dir_path)?;
         let file = fs::File::create(path)?;
         serde_json::to_writer(file, &self)?;
 
         Ok(())
     }
 
-    pub fn add_person(&mut self, name: &String, person: Person) {
-        self.people.insert(name.clone(), person);
+    pub fn add_person<S: AsRef<str>>(&mut self, name: S, person: Person) -> Result<(), UserSaveError> {
+        self.people.insert(name.as_ref().to_string(), person);
+        self.save(format!("./data/{}.user", self.name))?;
+
+        Ok(())
     }
 
-    pub fn remove_person(&mut self, name: &String) -> Option<Person> {
-        self.people.remove(name)
+    pub fn remove_person(&mut self, name: &String) -> Result<(), UserSaveError> {
+        self.people.remove(name);
+        self.save(format!("./data/{}.user", self.name))?;
+
+        Ok(())
     }
 
     pub fn find_person(&self, name: &String) -> Option<&Person> {
@@ -76,19 +84,34 @@ mod tests {
     use super::*;
     use assert_fs::*;
     use rstest::rstest;
+    use std::fs::OpenOptions;
+    use std::io::Write;
 
-    fn create_dummy_user() -> User {
+    fn create_dummy_user(name: &str) -> User {
         // Create person
-        let mut person = Person::new("Michael", 50, 10);
+        let person = Person::new(50, 10);
 
         // Create user and add person
         let mut user = User::default();
-        user.add_person(&person.name, person);
+        user.add_person(name, person).unwrap();
 
         user
     }
 
-    #[rstest] // (file, expected)
+    fn append_to_file<P: AsRef<Path>>(file_path: P, data: &str) -> std::io::Result<()> {
+        // Open the file in append mode, creating the file if it doesn't exist
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file_path)?;
+    
+        // Write the data to the file
+        file.write_all(data.as_bytes())?;
+    
+        Ok(())
+    }
+
+    #[rstest] // (file to save, expected)
     #[case("user.json", true)] // tests valid file, valid json
     #[case("", false)]         // tests invalid file, valid json
     // NOTE(mdeforge): This test assumes the JSON will never be invalid because it is being serialized from structs
@@ -97,34 +120,38 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let filename = temp_dir.join(file);
 
-        // Create user
-        let user = create_dummy_user();
+        // Save user
+        let user = create_dummy_user("Michael");
         match user.save(&filename) {
             Err(UserSaveError::OpenFileError(_)) => assert!(true),
             Err(UserSaveError::JSONSerializeError(_)) => assert!(true),
-            _ => assert!(expected, "Expected an UserSaveError")
+            _ => assert!(expected, "Expected a UserSaveError")
         }
     }
 
-    #[rstest]
-    #[case("user.json")]
-    fn test_user_save_and_load<P: AsRef<Path>>(#[case] file: P) {
+    #[rstest] // (file to load, valid json, expected)
+    #[case("user.json", true, true)]   // test valid file, valid json
+    #[case("user.json", false, false)] // test valid file, invalid json
+    #[case("", true, false)]           // test invalid file, valid json
+    fn test_user_load<P: AsRef<Path>>(#[case] file: P, #[case] valid_json: bool, #[case] expected: bool) {
         // Create directory
         let temp_dir = TempDir::new().unwrap();
         let filename = temp_dir.join(file);
 
         // Save user
-        let save_user = create_dummy_user();
-        let save_result = save_user.save(&filename);
+        let save_result = create_dummy_user("Michael").save("user.json");
         assert!(save_result.is_ok());
 
-        // Load user
-        let result = User::load(&filename);
-        assert!(result.is_ok());
+        // Mess up user data in the case we want it to fail
+        if !valid_json {
+            append_to_file(filename.clone(), "Foo").unwrap();
+        }
 
-        // Get person
-        let load_result = result.unwrap();
-        let load_person = load_result.find_person(&String::from("Michael")).unwrap();
-        assert_eq!(load_person.daily_points, 50);
+        // Load user
+        match User::load(filename.clone()) {
+            Err(UserLoadError::ReadFileError(_)) => assert!(true),
+            Err(UserLoadError::JSONDeserializeError(_)) => assert!(true),
+            _ => assert!(expected, "Expected a UserLoadError")
+        }
     }
 }

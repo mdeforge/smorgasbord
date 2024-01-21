@@ -2,7 +2,7 @@ use crate::user::User;
 use crate::person::Person;
 use super::menu::Menu;
 use super::main_menu::MainMenu;
-use inquire::{Select, Text};
+use inquire::{Select, Text, CustomType};
 
 #[derive(Default)]
 pub struct SetupMenu;
@@ -43,12 +43,25 @@ impl Menu for AddPersonMenu {
             return Some(Box::new(AddPersonMenu::default()));
         }
 
-        // let point_text = format!("How many points does {} have each day?", name);
-        // let points = Text::new(&point_text).prompt().unwrap();
-        // if points.parse() {
-        //     Ok(points) => user.add_person(&name, Person::default());
-        // }
+        // Get daily points
+        let daily_point_text = format!("How many points does {} get each day?", name);
+        let daily_points = CustomType::<i32>::new(&daily_point_text)
+            .with_formatter(&|i| format!("{}", i))
+            .with_error_message("Please type a valid number")
+            .with_help_message("Type the amount of Smart Points the person gets per day")
+            .prompt();
+    
+        // Get extra points
+        let extra_points_text = format!("How many extra points does {} get each week?", name);
+        let extra_points = CustomType::<i32>::new(&extra_points_text)
+            .with_formatter(&|i| format!("{}", i))
+            .with_error_message("Please type a valid number")
+            .with_help_message("Type the amount of extra Smart Points the person gets per week")
+            .prompt();
 
+        // Get extra points
+        let person: Person = Person::new(daily_points.unwrap(), extra_points.unwrap());
+        user.add_person(&name, person).unwrap();
         
         println!("{} has been added to the account.", name);
 
@@ -68,7 +81,7 @@ impl Menu for RemovePersonMenu {
         match name {
             "Cancel" => return Some(Box::new(SetupMenu::default())),
             _ => {
-                if user.remove_person(&ans).is_some() {
+                if user.remove_person(&ans).is_ok() {
                     println!("{} successfully removed from the account.", name);
                 }
 

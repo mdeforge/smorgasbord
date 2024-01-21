@@ -43,16 +43,14 @@ impl From<serde_json::Error> for PersonError {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Person {
-    pub name: String,
     pub daily_points: i32,
     pub extra_points: i32,
 }
 
 impl Person {
-    pub fn new<S: AsRef<str>>(name: S, daily_points: i32, extra_points: i32) -> Self {
+    pub fn new(daily_points: i32, extra_points: i32) -> Self {
         Self {
-            name: name.as_ref().to_string(),
-            daily_points:daily_points,
+            daily_points: daily_points,
             extra_points: extra_points
         }
     }

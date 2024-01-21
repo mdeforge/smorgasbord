@@ -1,6 +1,7 @@
 // Accessible publicly
 pub mod menu;
 pub mod main_menu;
+pub mod new_user_menu;
 
 // Accessible to menus\* but not outside
 mod setup_menu;

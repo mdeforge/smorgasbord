@@ -10,7 +10,7 @@ pub struct WeeklyMenu;
 impl Menu for WeeklyMenu {
     fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
         let options = vec!["Use Smart Points", "Just Randomize", "Main Menu"];
-        let ans = Select::new("Choose", options).prompt().unwrap();
+        let ans = Select::new("How do you want to plan your weekly menu?", options).prompt().unwrap();
         match ans {
             "Use Smart Points" => {
                 //

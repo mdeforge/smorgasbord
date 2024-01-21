@@ -2,6 +2,7 @@ use crate::User;
 use super::setup_menu::SetupMenu;
 use super::daily_menu::DailyMenu;
 use super::weekly_menu::WeeklyMenu;
+use super::new_user_menu::NewUserMenu;
 use super::menu::Menu;
 use inquire::Select;
 

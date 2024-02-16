@@ -45,13 +45,15 @@ impl From<serde_json::Error> for PersonError {
 pub struct Person {
     pub daily_points: i32,
     pub extra_points: i32,
+    favorite_recipes: Vec<String>
 }
 
 impl Person {
     pub fn new(daily_points: i32, extra_points: i32) -> Self {
         Self {
             daily_points: daily_points,
-            extra_points: extra_points
+            extra_points: extra_points,
+            favorite_recipes: Vec::new()
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Person, PersonError> {
@@ -70,6 +72,19 @@ impl Person {
 
     pub fn set_daily_smart_point_limit(&mut self, limit: i32) {
         self.daily_points = limit;
+    }
+
+    // Compares the current list of favorites with the recipe box to come up
+    // with a list of items that match.
+    pub fn get_indices_of_favorites(&self, recipe_names: &Vec<String>) -> Vec<usize> {
+        recipe_names
+            .iter()
+            .filter_map(|favorite| recipe_names.iter().position(|r| r == favorite))
+            .collect()
+    }
+
+    pub fn set_favorites(&mut self, favorites: Vec<String>) {
+        self.favorite_recipes = favorites;
     }
 }
 

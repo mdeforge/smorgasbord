@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-pub struct Recipes {
+pub struct RecipeBox {
     recipes: Vec<Recipe>
 }
 
-impl Recipes {
+impl RecipeBox {
     fn get_files_in_directory<P: AsRef<Path>>(&self, folder: P) -> Result<Vec<PathBuf>, io::Error> {
         // Get contents of directory
         let entries = fs::read_dir(folder)?;
@@ -27,6 +27,9 @@ impl Recipes {
     }
 
     pub fn read_recipes<P: AsRef<Path>>(&mut self, folder: P) -> Result<(), io::Error> {
+        // Clear existing recipes
+        self.recipes.clear();
+
         // Gather recipe files
         let recipe_files = self.get_files_in_directory(folder)?;
 
@@ -36,12 +39,19 @@ impl Recipes {
             .filter_map(|recipe_file| Some(Recipe::new(recipe_file).unwrap()))
             .collect();
         
-        // Sort recipes by smart points
+        // Sort recipes by smart points which will be useful later when generating meals
         self.recipes.sort_by_key(|x| x.points_per_serving);
 
         println!("Number of recipes: {}", self.recipes.len());
 
         Ok(())
+    }
+
+    pub fn recipe_names(&self) -> Vec<String> {
+        self.recipes
+            .iter()
+            .map(|recipe| recipe.name.to_owned())
+            .collect()
     }
 
     pub fn generate_daily_menu_using_smart_points() {

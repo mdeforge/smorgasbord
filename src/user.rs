@@ -1,7 +1,6 @@
 use crate::person::Person;
-use crate::recipes::Recipes;
+use crate::recipes::RecipeBox;
 use serde::{Deserialize, Serialize};
-use std::io;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -26,8 +25,9 @@ pub enum UserSaveError {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct User {
     pub name: String,
+    recipe_box_path: String,
     people: HashMap<String, Person>,
-    recipes: Recipes
+    recipe_box: RecipeBox,
 }
 
 impl User {
@@ -61,8 +61,8 @@ impl User {
         Ok(())
     }
 
-    pub fn find_person(&self, name: &String) -> Option<&Person> {
-        self.people.get(name)
+    pub fn find_person(&mut self, name: String) -> Option<&mut Person> {
+        self.people.get_mut(&name)
     }
 
     pub fn has_person(&self, name: &String) -> bool {
@@ -73,9 +73,26 @@ impl User {
         self.people.keys().cloned().collect()
     }
 
-    pub fn read_recipes<P: AsRef<Path>>(&mut self, folder: P) -> Result<(), io::Error> {
-        self.recipes.read_recipes(folder)
+    pub fn recipe_box(&mut self) -> &mut RecipeBox {
+        &mut self.recipe_box
     }
+
+    pub fn recipe_path(&self) -> String {
+        self.recipe_box_path.clone()
+    }
+
+    pub fn set_recipe_path(&mut self, path: String) {
+        self.recipe_box_path = path;
+    }
+
+    // NOTE(mdeforge): These should not be a part of user
+    // pub fn read_recipes<P: AsRef<Path>>(&mut self, folder: P) -> Result<(), io::Error> {
+    //     self.recipes.read_recipes(folder)
+    // }
+
+    // pub fn get_recipe_names(&mut self) -> Vec<String> {
+    //     self.recipes.get_recipe_names()
+    // }
 
 }
 

@@ -1,4 +1,4 @@
-use crate::User;
+use crate::Account;
 use super::setup_menu::SetupMenu;
 use super::daily_menu::DailyMenu;
 use super::weekly_menu::WeeklyMenu;
@@ -9,7 +9,7 @@ use inquire::Select;
 pub struct MainMenu;
 
 impl Menu for MainMenu {
-    fn prompt(&self, _user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, _account: &mut Account) -> Option<Box<dyn Menu>> {
         let options = vec![
             "Create weekly meal plan",
             "Create daily meal plan",

@@ -1,7 +1,7 @@
 use std::path::Path;
 
+use crate::account::Account;
 use crate::user::User;
-use crate::person::Person;
 use super::menu::Menu;
 use super::main_menu::MainMenu;
 use inquire::{Select, Text, CustomType, MultiSelect};
@@ -21,7 +21,7 @@ pub struct ConfigPersonMenu;
 pub struct EditRecipeBoxMenu;
 
 impl Menu for SetupMenu {
-    fn prompt(&self, _user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, _account: &mut Account) -> Option<Box<dyn Menu>> {
         let options = vec!["Add person", "Remove person", "Add recipe location", "Remove recipe location", "Back"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {
@@ -37,7 +37,7 @@ impl Menu for SetupMenu {
 
 impl Menu for AddPersonMenu {
     // TODO(mdeforge): How to cancel?
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>> {
         let name = Text::new("Please enter a name:").prompt().unwrap();
 
         // Check if empty
@@ -47,7 +47,7 @@ impl Menu for AddPersonMenu {
         }
 
         // Check if it exists
-        if user.has_person(&name) {
+        if account.has_person(&name) {
             println!("Person {} already exists, please use another name.", name);
             return Some(Box::new(AddPersonMenu::default()));
         }
@@ -69,8 +69,8 @@ impl Menu for AddPersonMenu {
             .prompt();
 
         // Get extra points
-        let person: Person = Person::new(daily_points.unwrap(), extra_points.unwrap());
-        user.add_person(&name, person).unwrap();
+        let user: User = User::new(daily_points.unwrap(), extra_points.unwrap());
+        account.add_user(&name, user).unwrap();
         
         println!("{} has been added to the account.", name);
 
@@ -79,7 +79,7 @@ impl Menu for AddPersonMenu {
 }
 
 impl Menu for RemovePersonMenu {
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
         let mut options = user.get_people();
         options.push(String::from("Cancel"));
 
@@ -90,7 +90,7 @@ impl Menu for RemovePersonMenu {
         match name {
             "Cancel" => return Some(Box::new(SetupMenu::default())),
             _ => {
-                if user.remove_person(&ans).is_ok() {
+                if user.remove_user(&ans).is_ok() {
                     println!("{} successfully removed from the account.", name);
                 }
 
@@ -101,7 +101,7 @@ impl Menu for RemovePersonMenu {
 }
 
 impl Menu for ConfigPersonMenu {
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
         // TODO(mdeforge): Add back option at this point so that they don't have to go to the next menu
         // TODO(mdeforge): Back should take them to the person select menu, not all the way back
 
@@ -129,7 +129,7 @@ impl Menu for ConfigPersonMenu {
                 
                 let recipe_names = user.recipe_box().recipe_names();
                 
-                if let Some(person) = user.find_person(selection) {
+                if let Some(person) = user.find_user(selection) {
                     let indices = person.get_indices_of_favorites(&recipe_names);
                         
                     let favorites = MultiSelect::new("Select favorite recipes", recipe_names)
@@ -155,17 +155,17 @@ impl Menu for ConfigPersonMenu {
 }
 
 impl Menu for EditRecipeBoxMenu {
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>> {
         let user_path = Text::new("Please enter the path to recipe folder.")
-            .with_initial_value(&user.recipe_path())
+            .with_initial_value(&account.recipe_path())
             .prompt()
             .unwrap();
 
         let recipe_path = Path::new(user_path.as_str());
         if recipe_path.exists() {
             // TODO(mdeforge): Or what?
-            if user.recipe_box().read_recipes(recipe_path).is_ok() {
-                user.set_recipe_path(user_path);
+            if account.recipe_box().read_recipes(recipe_path).is_ok() {
+                account.set_recipe_path(user_path);
             }
 
             return Some(Box::new(SetupMenu::default()))

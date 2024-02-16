@@ -1,99 +1,91 @@
-use crate::person::Person;
-use crate::recipes::RecipeBox;
+use core::fmt;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::error::Error;
 use std::fs;
 use std::path::Path;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum UserLoadError {
-    #[error("Failed to read file: {0}")]
-    ReadFileError(#[from] std::io::Error),
-    #[error("Failed to parse JSON: {0}")]
-    JSONDeserializeError(#[from] serde_json::Error)
+#[derive(Debug)]
+pub enum PersonError {
+    ReadError(std::io::Error),
+    WriteError(std::io::Error),
+    ParseError(serde_json::Error),
 }
 
-#[derive(Error, Debug)]
-pub enum UserSaveError {
-    #[error("Failed to open file: {0}")]
-    OpenFileError(#[from] std::io::Error),
-    #[error("Failed to write JSON: {0}")]
-    JSONSerializeError(#[from] serde_json::Error)
+impl fmt::Display for PersonError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PersonError::ReadError(err) => write!(f, "ReadError: {}", err),
+            PersonError::WriteError(err) => write!(f, "WriteError: {}", err),
+            PersonError::ParseError(err) => write!(f, "ParseError: {}", err),
+        }
+    }
+}
+
+impl Error for PersonError {}
+
+impl From<std::io::Error> for PersonError {
+    fn from(error: std::io::Error) -> Self {
+        PersonError::ReadError(error)
+    }
+}
+
+// impl From<std::io::Error> for PersonError {
+//     fn from(error: std::io::Error) -> Self {
+//         PersonError::WriteError(error)
+//     }
+// }
+
+impl From<serde_json::Error> for PersonError {
+    fn from(error: serde_json::Error) -> Self {
+        PersonError::ParseError(error)
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct User {
-    pub name: String,
-    recipe_box_path: String,
-    people: HashMap<String, Person>,
-    recipe_box: RecipeBox,
+    pub daily_points: i32,
+    pub extra_points: i32,
+    favorite_recipes: Vec<String>
 }
 
 impl User {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<User, UserLoadError> {
+    pub fn new(daily_points: i32, extra_points: i32) -> Self {
+        Self {
+            daily_points: daily_points,
+            extra_points: extra_points,
+            favorite_recipes: Vec::new()
+        }
+    }
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<User, PersonError> {
         let file_data: String = fs::read_to_string(&path)?;
-        let user = serde_json::from_str(&file_data)?;
+        let person = serde_json::from_str(&file_data)?;
 
-        Ok(user)
+        Ok(person)
     }
 
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), UserSaveError> {
-        let dir_path = path.as_ref().parent().unwrap();
-        fs::create_dir_all(dir_path)?;
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
         let file = fs::File::create(path)?;
         serde_json::to_writer(file, &self)?;
 
         Ok(())
     }
 
-    pub fn add_person<S: AsRef<str>>(&mut self, name: S, person: Person) -> Result<(), UserSaveError> {
-        self.people.insert(name.as_ref().to_string(), person);
-        self.save(format!("./data/{}.user", self.name))?;
-
-        Ok(())
+    pub fn set_daily_smart_point_limit(&mut self, limit: i32) {
+        self.daily_points = limit;
     }
 
-    pub fn remove_person(&mut self, name: &String) -> Result<(), UserSaveError> {
-        self.people.remove(name);
-        self.save(format!("./data/{}.user", self.name))?;
-
-        Ok(())
+    // Compares the current list of favorites with the recipe box to come up
+    // with a list of items that match.
+    pub fn get_indices_of_favorites(&self, recipe_names: &Vec<String>) -> Vec<usize> {
+        recipe_names
+            .iter()
+            .filter_map(|favorite| recipe_names.iter().position(|r| r == favorite))
+            .collect()
     }
 
-    pub fn find_person(&mut self, name: String) -> Option<&mut Person> {
-        self.people.get_mut(&name)
+    pub fn set_favorites(&mut self, favorites: Vec<String>) {
+        self.favorite_recipes = favorites;
     }
-
-    pub fn has_person(&self, name: &String) -> bool {
-        self.people.contains_key(name)
-    }
-
-    pub fn get_people(&self) -> Vec<String> {
-        self.people.keys().cloned().collect()
-    }
-
-    pub fn recipe_box(&mut self) -> &mut RecipeBox {
-        &mut self.recipe_box
-    }
-
-    pub fn recipe_path(&self) -> String {
-        self.recipe_box_path.clone()
-    }
-
-    pub fn set_recipe_path(&mut self, path: String) {
-        self.recipe_box_path = path;
-    }
-
-    // NOTE(mdeforge): These should not be a part of user
-    // pub fn read_recipes<P: AsRef<Path>>(&mut self, folder: P) -> Result<(), io::Error> {
-    //     self.recipes.read_recipes(folder)
-    // }
-
-    // pub fn get_recipe_names(&mut self) -> Vec<String> {
-    //     self.recipes.get_recipe_names()
-    // }
-
 }
 
 #[cfg(test)]
@@ -101,74 +93,23 @@ mod tests {
     use super::*;
     use assert_fs::*;
     use rstest::rstest;
-    use std::fs::OpenOptions;
-    use std::io::Write;
 
-    fn create_dummy_user(name: &str) -> User {
-        // Create person
-        let person = Person::new(50, 10);
-
-        // Create user and add person
-        let mut user = User::default();
-        user.add_person(name, person).unwrap();
-
-        user
-    }
-
-    fn append_to_file<P: AsRef<Path>>(file_path: P, data: &str) -> std::io::Result<()> {
-        // Open the file in append mode, creating the file if it doesn't exist
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(file_path)?;
-    
-        // Write the data to the file
-        file.write_all(data.as_bytes())?;
-    
-        Ok(())
-    }
-
-    #[rstest] // (file to save, expected)
-    #[case("user.json", true)] // tests valid file, valid json
-    #[case("", false)]         // tests invalid file, valid json
-    // NOTE(mdeforge): This test assumes the JSON will never be invalid because it is being serialized from structs
-    fn test_user_save<P: AsRef<Path>>(#[case] file: P, #[case] expected: bool) {
-        // Create directory
+    #[rstest]
+    #[case("person.json")]
+    fn test_person_save_and_load<P: AsRef<Path>>(#[case] file: P) {
         let temp_dir = TempDir::new().unwrap();
         let filename = temp_dir.join(file);
 
-        // Save user
-        let user = create_dummy_user("Michael");
-        match user.save(&filename) {
-            Err(UserSaveError::OpenFileError(_)) => assert!(true),
-            Err(UserSaveError::JSONSerializeError(_)) => assert!(true),
-            _ => assert!(expected, "Expected a UserSaveError")
-        }
-    }
+        let mut save_person = User::default();
+        save_person.set_daily_smart_point_limit(50);
 
-    #[rstest] // (file to load, valid json, expected)
-    #[case("user.json", true, true)]   // test valid file, valid json
-    #[case("user.json", false, false)] // test valid file, invalid json
-    #[case("", true, false)]           // test invalid file, valid json
-    fn test_user_load<P: AsRef<Path>>(#[case] file: P, #[case] valid_json: bool, #[case] expected: bool) {
-        // Create directory
-        let temp_dir = TempDir::new().unwrap();
-        let filename = temp_dir.join(file);
-
-        // Save user
-        let save_result = create_dummy_user("Michael").save("user.json");
+        let save_result = save_person.save(&filename);
         assert!(save_result.is_ok());
 
-        // Mess up user data in the case we want it to fail
-        if !valid_json {
-            append_to_file(filename.clone(), "Foo").unwrap();
-        }
+        let result = User::load(&filename);
+        assert!(result.is_ok());
 
-        // Load user
-        match User::load(filename.clone()) {
-            Err(UserLoadError::ReadFileError(_)) => assert!(true),
-            Err(UserLoadError::JSONDeserializeError(_)) => assert!(true),
-            _ => assert!(expected, "Expected a UserLoadError")
-        }
+        let load_person = result.unwrap();
+        assert_eq!(load_person.daily_points, 50);
     }
 }

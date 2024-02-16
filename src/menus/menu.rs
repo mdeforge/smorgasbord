@@ -1,5 +1,5 @@
-use crate::user::User;
+use crate::account::Account;
 
 pub trait Menu {
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>>;
+    fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>>;
 }

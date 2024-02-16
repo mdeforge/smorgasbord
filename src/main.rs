@@ -1,10 +1,10 @@
-mod person;
+mod user;
 mod recipe;
 mod recipes;
-mod user;
+mod account;
 mod menus;
 
-use user::*;
+use account::*;
 use menus::menu::*;
 use menus::main_menu::MainMenu;
 use inquire::Select;
@@ -42,8 +42,8 @@ fn get_user_files_in_directory<P: AsRef<Path>>(path: P) -> Option<Vec<PathBuf>> 
     }
 }
 
-fn load_user_file<P: AsRef<Path>>(file: P) -> Option<User> {
-    match User::load(file) {
+fn load_user_file<P: AsRef<Path>>(file: P) -> Option<Account> {
+    match Account::load(file) {
         Ok(user) => Some(user),
         Err(err) => {
             println!("Failed to load user.");
@@ -57,7 +57,7 @@ fn load_user_file<P: AsRef<Path>>(file: P) -> Option<User> {
 
 fn main() -> std::io::Result<()> {
     let mut _current_menu: Option<Box<dyn Menu>> = Some(Box::new(MainMenu::default()));
-    let mut user = User::default();
+    let mut user = Account::default();
 
     let path = Path::new("./data");
     fs::create_dir_all(&path).expect("Failed to create data directory!");
@@ -75,12 +75,12 @@ fn main() -> std::io::Result<()> {
     
                 user = load_user_file(choice).unwrap_or_else(|| {
                     _current_menu = Some(Box::new(NewUserMenu::default()));
-                    User::default() // Create new user
+                    Account::default() // Create new user
                 });
             } else {
                 user = load_user_file(&files[0]).unwrap_or_else(|| {
                     _current_menu = Some(Box::new(NewUserMenu::default()));
-                    User::default() // Create new user
+                    Account::default() // Create new user
                 });
             }
 

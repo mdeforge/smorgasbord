@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::account::Account;
 //use crate::recipes::*;
 use super::menu::Menu;
 use super::main_menu::MainMenu;
@@ -8,7 +8,7 @@ use inquire::Select;
 pub struct DailyMenu;
 
 impl Menu for DailyMenu {
-    fn prompt(&self, _user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, _account: &mut Account) -> Option<Box<dyn Menu>> {
         let options = vec!["Use Smart Points", "Just Randomize", "Main Menu"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {

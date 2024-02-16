@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::account::Account;
 use super::menu::Menu;
 use super::setup_menu::SetupMenu;
 use inquire::Text;
@@ -9,7 +9,7 @@ pub struct NewUserMenu;
 
 impl Menu for NewUserMenu {
     // TODO(mdeforge): How to cancel?
-    fn prompt(&self, user: &mut User) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
         let name = Text::new("Please enter a name:").prompt().unwrap();
 
         // Check if empty

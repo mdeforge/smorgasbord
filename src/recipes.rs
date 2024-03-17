@@ -10,19 +10,23 @@ pub struct RecipeBox {
 }
 
 impl RecipeBox {
-    fn get_files_in_directory<P: AsRef<Path>>(&self, folder: P) -> Result<Vec<PathBuf>, io::Error> {
+    fn get_recipes_in_directory<P: AsRef<Path>>(&self, folder: P) -> Result<Vec<PathBuf>, io::Error> {
         // Get contents of directory
         let entries = fs::read_dir(folder)?;
     
-        // Filter out everything but files
+        // Filter out everything but json files
         let file_path: Vec<PathBuf> = entries
             .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+            .filter(|entry| {
+                let file_type = match entry.file_type() {
+                    Ok(ft) => ft,
+                    Err(_) => return false, // or handle the error as appropriate
+                };
+                file_type.is_file() && entry.path().extension().map_or(false, |ext| ext == "json")
+            })
             .map(|entry| entry.path())
             .collect();
 
-        // TODO(mdeforge): Only find json files?
-    
         Ok(file_path)
     }
 
@@ -31,9 +35,13 @@ impl RecipeBox {
         self.recipes.clear();
 
         // Gather recipe files
-        let recipe_files = self.get_files_in_directory(folder)?;
+        let recipe_files = self.get_recipes_in_directory(folder)?;
+        for recipe in recipe_files.clone() {
+            println!("{}", recipe.to_string_lossy());
+        }
 
         // Read recipes into vector
+        // TODO(mdeforge): Maybe only read valid ones? Print invalid?
         self.recipes = recipe_files
             .into_iter()
             .filter_map(|recipe_file| Some(Recipe::new(recipe_file).unwrap()))
@@ -42,7 +50,7 @@ impl RecipeBox {
         // Sort recipes by smart points which will be useful later when generating meals
         self.recipes.sort_by_key(|x| x.points_per_serving);
 
-        println!("Number of recipes: {}", self.recipes.len());
+        println!("Number of recipes found: {}", self.recipes.len());
 
         Ok(())
     }

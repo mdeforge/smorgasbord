@@ -46,9 +46,7 @@ fn load_user_file<P: AsRef<Path>>(file: P) -> Option<Account> {
     match Account::load(file) {
         Ok(user) => Some(user),
         Err(err) => {
-            println!("Failed to load user.");
-            println!("{}", err);
-            println!("Entering new account setup.");
+            println!("Failed to load user. {}", err);
 
             None
         }
@@ -87,7 +85,7 @@ fn main() -> std::io::Result<()> {
             println!("Welcome back, {}!", user.name);
         },
         None => {
-            println!("Did not find users, entering account setup.");
+            println!("Entering account setup.");
             _current_menu = Some(Box::new(NewUserMenu::default()));
         }
     };

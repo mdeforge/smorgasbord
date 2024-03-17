@@ -20,9 +20,12 @@ pub struct ConfigPersonMenu;
 #[derive(Default)]
 pub struct EditRecipeBoxMenu;
 
+// TODO(mdeforge): Would love an option to validate recipe box. Workaround now is to
+//                 edit recipe box location, even if it's the same, to get free check.
+
 impl Menu for SetupMenu {
     fn prompt(&self, _account: &mut Account) -> Option<Box<dyn Menu>> {
-        let options = vec!["Add person", "Remove person", "Add recipe location", "Remove recipe location", "Back"];
+        let options = vec!["Add person", "Remove person", "Edit recipe box location", "Back"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {
             "Add person" => Some(Box::new(AddPersonMenu::default())),
@@ -156,16 +159,19 @@ impl Menu for ConfigPersonMenu {
 
 impl Menu for EditRecipeBoxMenu {
     fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>> {
-        let user_path = Text::new("Please enter the path to recipe folder.")
+        let user_path = Text::new("Please enter the path to recipe folder:")
             .with_initial_value(&account.recipe_path())
             .prompt()
             .unwrap();
 
         let recipe_path = Path::new(user_path.as_str());
         if recipe_path.exists() {
-            // TODO(mdeforge): Or what?
             if account.recipe_box().read_recipes(recipe_path).is_ok() {
+                println!("Updated recipe folder.");
                 account.set_recipe_path(user_path);
+            } else {
+                println!("Could not find a valid recipe folder.");
+                return Some(Box::new(EditRecipeBoxMenu::default()));    
             }
 
             return Some(Box::new(SetupMenu::default()))

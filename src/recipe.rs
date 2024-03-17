@@ -59,6 +59,7 @@ pub struct Ingredient {
     pub quantity: f32,
     pub unit: String,
     pub name: String,
+    #[serde(default)]
     pub prep: String,
     #[serde(rename = "type")]
     pub category: String,
@@ -92,6 +93,7 @@ pub struct Recipe {
 
 impl Recipe {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Recipe, RecipeError> {
+        println!("Reading: {}", path.as_ref().to_string_lossy());
         let file_data = fs::read_to_string(&path)?;
         let recipe = serde_json::from_str(&file_data)?;
 

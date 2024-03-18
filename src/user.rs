@@ -1,8 +1,6 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::fs;
-use std::path::Path;
 
 #[derive(Debug)]
 pub enum PersonError {
@@ -56,19 +54,6 @@ impl User {
             favorite_recipes: Vec::new()
         }
     }
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<User, PersonError> {
-        let file_data: String = fs::read_to_string(&path)?;
-        let person = serde_json::from_str(&file_data)?;
-
-        Ok(person)
-    }
-
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
-        let file = fs::File::create(path)?;
-        serde_json::to_writer(file, &self)?;
-
-        Ok(())
-    }
 
     pub fn set_daily_smart_point_limit(&mut self, limit: i32) {
         self.daily_points = limit;
@@ -85,31 +70,5 @@ impl User {
 
     pub fn set_favorites(&mut self, favorites: Vec<String>) {
         self.favorite_recipes = favorites;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use assert_fs::*;
-    use rstest::rstest;
-
-    #[rstest]
-    #[case("person.json")]
-    fn test_person_save_and_load<P: AsRef<Path>>(#[case] file: P) {
-        let temp_dir = TempDir::new().unwrap();
-        let filename = temp_dir.join(file);
-
-        let mut save_person = User::default();
-        save_person.set_daily_smart_point_limit(50);
-
-        let save_result = save_person.save(&filename);
-        assert!(save_result.is_ok());
-
-        let result = User::load(&filename);
-        assert!(result.is_ok());
-
-        let load_person = result.unwrap();
-        assert_eq!(load_person.daily_points, 50);
     }
 }

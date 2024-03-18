@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::ffi::OsStr;
 
-use crate::menus::new_user_menu::NewUserMenu;
+use crate::menus::new_account_menu::NewAccountMenu;
 
 // TODO(mdeforge): Need to add support for tracking two people's smart point values
 // TODO(mdeforge): Replace unwrap's after prompt with error handling
@@ -72,21 +72,19 @@ fn main() -> std::io::Result<()> {
                     Select::new("Select user file to load:", options).prompt().unwrap();
     
                 user = load_user_file(choice).unwrap_or_else(|| {
-                    _current_menu = Some(Box::new(NewUserMenu::default()));
+                    _current_menu = Some(Box::new(NewAccountMenu::default()));
                     Account::default() // Create new user
                 });
             } else {
                 user = load_user_file(&files[0]).unwrap_or_else(|| {
-                    _current_menu = Some(Box::new(NewUserMenu::default()));
+                    _current_menu = Some(Box::new(NewAccountMenu::default()));
                     Account::default() // Create new user
                 });
             }
-
-            println!("Welcome back, {}!", user.name);
         },
         None => {
             println!("Entering account setup.");
-            _current_menu = Some(Box::new(NewUserMenu::default()));
+            _current_menu = Some(Box::new(NewAccountMenu::default()));
         }
     };
 

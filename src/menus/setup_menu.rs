@@ -25,7 +25,7 @@ pub struct EditRecipeBoxMenu;
 
 impl Menu for SetupMenu {
     fn prompt(&self, _account: &mut Account) -> Option<Box<dyn Menu>> {
-        let options = vec!["Add person", "Remove person", "Edit recipe box location", "Back"];
+        let options = vec!["Add person", "Remove person", "Configure Person", "Edit recipe box location", "Back"];
         let ans = Select::new("Choose", options).prompt().unwrap();
         match ans {
             "Add person" => Some(Box::new(AddPersonMenu::default())),
@@ -50,7 +50,7 @@ impl Menu for AddPersonMenu {
         }
 
         // Check if it exists
-        if account.has_person(&name) {
+        if account.has_user(&name) {
             println!("Person {} already exists, please use another name.", name);
             return Some(Box::new(AddPersonMenu::default()));
         }
@@ -83,7 +83,7 @@ impl Menu for AddPersonMenu {
 
 impl Menu for RemovePersonMenu {
     fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
-        let mut options = user.get_people();
+        let mut options = user.get_users();
         options.push(String::from("Cancel"));
 
         let ans = Select::new("Select person to remove:", options)
@@ -104,7 +104,7 @@ impl Menu for RemovePersonMenu {
 }
 
 impl Menu for ConfigPersonMenu {
-    fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>> {
         // TODO(mdeforge): Add back option at this point so that they don't have to go to the next menu
         // TODO(mdeforge): Back should take them to the person select menu, not all the way back
 
@@ -125,22 +125,38 @@ impl Menu for ConfigPersonMenu {
                 // NOTE(mdeforge): Since recipe's are account bound but favorites are per person, we have to
                 //                 piece the info together.
 
-                let people = user.get_people();
+                let people = account.get_users();
                 let selection = Select::new("Which person do you want to configure?", people)
                     .prompt()
                     .unwrap();
                 
-                let recipe_names = user.recipe_box().recipe_names();
+                let recipe_names = account.recipe_box().recipe_names();
                 
-                if let Some(person) = user.find_user(selection) {
-                    let indices = person.get_indices_of_favorites(&recipe_names);
-                        
-                    let favorites = MultiSelect::new("Select favorite recipes", recipe_names)
+                if let Some(user) = account.get_user(selection) {
+                    let indices = user.get_indices_of_favorites(&recipe_names);
+                    let favorites_result = MultiSelect::new("Select favorite recipes", recipe_names)
                         .with_default(&indices)
-                        .prompt()
-                        .unwrap();
-    
-                    person.set_favorites(favorites);
+                        .prompt();
+
+                    match favorites_result {
+                        Ok(favorites) => {
+                            user.set_favorites(favorites);
+                            match account.save() {
+                                Ok(_) => {
+                                    println!("Successfully saved favorites.");
+                                    return Some(Box::new(MainMenu::default()))
+                                },
+                                Err(err) => {
+                                    println!("Failed to save favorites: {}", err);
+                                    return Some(Box::new(MainMenu::default()))
+                                }
+                            }
+                        },
+                        Err(_) => {
+                            println!("Could not find any recipes to favorite.");
+                            return Some(Box::new(MainMenu::default()))
+                        }
+                    }
                 }
 
                 return Some(Box::new(MainMenu::default()))
@@ -167,14 +183,20 @@ impl Menu for EditRecipeBoxMenu {
         let recipe_path = Path::new(user_path.as_str());
         if recipe_path.exists() {
             if account.recipe_box().read_recipes(recipe_path).is_ok() {
-                println!("Updated recipe folder.");
-                account.set_recipe_path(user_path);
+                match account.set_recipe_path(user_path) {
+                    Ok(_) => {
+                        println!("Updated recipe path.");
+                        return Some(Box::new(SetupMenu::default()))
+                    },
+                    Err(_) => {
+                        println!("Failed to update recipe path.");
+                        return Some(Box::new(SetupMenu::default()))
+                    }
+                }
             } else {
                 println!("Could not find a valid recipe folder.");
                 return Some(Box::new(EditRecipeBoxMenu::default()));    
             }
-
-            return Some(Box::new(SetupMenu::default()))
         } else {
             println!("Path does not exist, please enter a valid path.");
 

@@ -56,25 +56,13 @@ impl RecipeBox {
     }
 
     pub fn recipe_names(&self) -> Vec<String> {
-        self.recipes
-            .iter()
-            .map(|recipe| recipe.name.to_owned())
-            .collect()
-    }
-
-    pub fn generate_daily_menu_using_smart_points() {
-        println!("Daily smart points!");
-    }
-
-    pub fn generate_weekly_menu_using_smart_points() {
-        println!("Weekly smart points!")
-    }
-    
-    pub fn generate_daily_menu_randomly() {
-        println!("Daily randomly!")
-    }
-
-    pub fn generate_weekly_menu_randomly() {
-        println!("Weekly randomly!")
+        if self.recipes.is_empty() {
+            Vec::new()
+        } else {
+            self.recipes
+                .iter()
+                .map(|recipe| recipe.name.to_owned())
+                .collect()
+        }
     }
 }

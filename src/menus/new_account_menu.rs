@@ -2,25 +2,22 @@ use crate::account::Account;
 use super::menu::Menu;
 use super::setup_menu::SetupMenu;
 use inquire::Text;
-use std::path::Path;
 
 #[derive(Default)]
-pub struct NewUserMenu;
+pub struct NewAccountMenu;
 
-impl Menu for NewUserMenu {
+impl Menu for NewAccountMenu {
     // TODO(mdeforge): How to cancel?
-    fn prompt(&self, user: &mut Account) -> Option<Box<dyn Menu>> {
+    fn prompt(&self, account: &mut Account) -> Option<Box<dyn Menu>> {
         let name = Text::new("Please enter a name:").prompt().unwrap();
 
         // Check if empty
         if name.is_empty() {
             println!("Name cannot be empty, please enter a valid name.");
-            return Some(Box::new(NewUserMenu::default()));
+            return Some(Box::new(NewAccountMenu::default()));
         }
 
-        user.name = name.clone();
-        let path = format!("./data/{}.user", name.clone());
-        match user.save(Path::new(&path)) {
+        match account.save() {
             Ok(()) => {
                 println!("Account has been created.");
                 Some(Box::new(SetupMenu::default()))

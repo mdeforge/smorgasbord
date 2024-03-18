@@ -24,13 +24,22 @@ pub enum AccountSaveError {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Account {
-    pub name: String,
+    name: String,
     recipe_box_path: String,
-    people: HashMap<String, User>,
+    users: HashMap<String, User>,
     recipe_box: RecipeBox,
 }
 
 impl Account {
+    pub fn new(name: String) -> Self {
+        Self {
+            name: name,
+            recipe_box_path: String::new(),
+            users: HashMap::new(),
+            recipe_box: RecipeBox::default()
+        }
+    }
+
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Account, AccountLoadError> {
         let file_data: String = fs::read_to_string(&path)?;
         let user = serde_json::from_str(&file_data)?;
@@ -38,9 +47,11 @@ impl Account {
         Ok(user)
     }
 
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), AccountSaveError> {
-        let dir_path = path.as_ref().parent().unwrap();
-        fs::create_dir_all(dir_path)?;
+    pub fn save(&self) -> Result<(), AccountSaveError> {
+        let path_string = format!("./data/{}.user", self.name);
+        let path = Path::new(path_string.as_str());
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
         let file = fs::File::create(path)?;
         serde_json::to_writer(file, &self)?;
 
@@ -48,29 +59,29 @@ impl Account {
     }
 
     pub fn add_user<S: AsRef<str>>(&mut self, name: S, user: User) -> Result<(), AccountSaveError> {
-        self.people.insert(name.as_ref().to_string(), user);
-        self.save(format!("./data/{}.user", self.name))?;
+        self.users.insert(name.as_ref().to_string(), user);
+        self.save()?;
 
         Ok(())
     }
 
     pub fn remove_user(&mut self, name: &String) -> Result<(), AccountSaveError> {
-        self.people.remove(name);
-        self.save(format!("./data/{}.user", self.name))?;
+        self.users.remove(name);
+        self.save()?;
 
         Ok(())
     }
 
-    pub fn find_user(&mut self, name: String) -> Option<&mut User> {
-        self.people.get_mut(&name)
+    pub fn get_user(&mut self, name: String) -> Option<&mut User> {
+        self.users.get_mut(&name)
     }
 
-    pub fn has_person(&self, name: &String) -> bool {
-        self.people.contains_key(name)
+    pub fn has_user(&self, name: &String) -> bool {
+        self.users.contains_key(name)
     }
 
-    pub fn get_people(&self) -> Vec<String> {
-        self.people.keys().cloned().collect()
+    pub fn get_users(&self) -> Vec<String> {
+        self.users.keys().cloned().collect()
     }
 
     pub fn recipe_box(&mut self) -> &mut RecipeBox {
@@ -81,8 +92,11 @@ impl Account {
         self.recipe_box_path.clone()
     }
 
-    pub fn set_recipe_path(&mut self, path: String) {
+    pub fn set_recipe_path(&mut self, path: String) -> Result<(), AccountSaveError> {
         self.recipe_box_path = path;
+        self.save()?;
+
+        Ok(())
     }
 
     // NOTE(mdeforge): These should not be a part of user
@@ -104,7 +118,7 @@ mod tests {
     use std::fs::OpenOptions;
     use std::io::Write;
 
-    fn create_dummy_user(name: &str) -> Account {
+    fn create_dummy_account(name: &str) -> Account {
         // Create user
         let user = User::new(50, 10);
 
@@ -138,8 +152,8 @@ mod tests {
         let filename = temp_dir.join(file);
 
         // Save user
-        let user = create_dummy_user("Michael");
-        match user.save(&filename) {
+        let account = create_dummy_account("Michael");
+        match account.save() {
             Err(AccountSaveError::OpenFileError(_)) => assert!(true),
             Err(AccountSaveError::JSONSerializeError(_)) => assert!(true),
             _ => assert!(expected, "Expected a UserSaveError")
@@ -156,7 +170,7 @@ mod tests {
         let filename = temp_dir.join(file);
 
         // Save user
-        let save_result = create_dummy_user("Michael").save("user.json");
+        let save_result = create_dummy_account("Michael").save();
         assert!(save_result.is_ok());
 
         // Mess up user data in the case we want it to fail

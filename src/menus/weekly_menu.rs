@@ -12,9 +12,9 @@ fn generate_daily_menu_using_smart_points() {
 }
 
 fn generate_weekly_menu_using_smart_points(account: &mut Account) {
-    for user in &account.get_users() {
-        let data = account.get_user(user.to_string());
-        println!("{}: {}", user, data.unwrap().daily_points);
+    for user in account.get_users() {
+        let data = account.get_user(user);
+        //println!("{}: {}", user, data.unwrap().daily_points);
     }
 }
 

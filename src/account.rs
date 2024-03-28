@@ -48,36 +48,42 @@ impl Account {
     }
 
     pub fn save(&self) -> Result<(), AccountSaveError> {
+        // Construct path
         let path_string = format!("./data/{}.user", self.name);
         let path = Path::new(path_string.as_str());
         let parent_dir = path.parent().unwrap();
+
+        // Create directory (if needed) and file
         fs::create_dir_all(parent_dir)?;
         let file = fs::File::create(path)?;
         serde_json::to_writer(file, &self)?;
 
+        // Notify user of successful save
+        println!("User saved.");
+
         Ok(())
     }
 
-    pub fn add_user<S: AsRef<str>>(&mut self, name: S, user: User) -> Result<(), AccountSaveError> {
-        self.users.insert(name.as_ref().to_string(), user);
+    pub fn add_user(&mut self, user: User) -> Result<(), AccountSaveError> {
+        self.users.insert(user.get_name(), user);
         self.save()?;
 
         Ok(())
     }
 
-    pub fn remove_user(&mut self, name: &String) -> Result<(), AccountSaveError> {
-        self.users.remove(name);
+    pub fn remove_user<S: AsRef<str>>(&mut self, name: S) -> Result<(), AccountSaveError> {
+        self.users.remove(name.as_ref());
         self.save()?;
 
         Ok(())
     }
 
-    pub fn get_user(&mut self, name: String) -> Option<&mut User> {
-        self.users.get_mut(&name)
+    pub fn get_user<S: AsRef<str>>(&mut self, name: S) -> Option<&mut User> {
+        self.users.get_mut(name.as_ref())
     }
 
-    pub fn has_user(&self, name: &String) -> bool {
-        self.users.contains_key(name)
+    pub fn has_user<S: AsRef<str>>(&self, name: S) -> bool {
+        self.users.contains_key(name.as_ref())
     }
 
     pub fn get_users(&self) -> Vec<String> {
@@ -120,11 +126,11 @@ mod tests {
 
     fn create_dummy_account(name: &str) -> Account {
         // Create user
-        let user = User::new(50, 10);
+        let user = User::new(String::from("Test"), 50, 10);
 
         // Create user and add person
         let mut account = Account::default();
-        account.add_user(name, user).unwrap();
+        account.add_user(user).unwrap();
 
         account
     }
